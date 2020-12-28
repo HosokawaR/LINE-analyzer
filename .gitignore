@@ -70,4 +70,8 @@ fabric.properties
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
 
+# 会話履歴ファイル
 conversation_files/*
+
+# プライベートな設定
+private_settings.py

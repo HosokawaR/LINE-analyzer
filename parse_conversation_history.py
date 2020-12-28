@@ -1,54 +1,82 @@
-import os
+import enum
 import re
-import csv
 
-# 日付, 時間, 名前, 発言のcsvに変換
+import pandas as pd
+from tqdm import tqdm
 
 
-READ_PATH = 'conversation_files/mierda_20200618.txt'
-RIGHT_PATH = 'chat_csv/mierda_20200618.csv'
+class Action(enum.Enum):
+    SEND_MESSAGE = enum.auto()
+    DEL_MSG_BY_SOMEONE = enum.auto()
+    DEL_MSG_BY_USER = enum.auto()
+    CHANGE_GROUP_NAME = enum.auto()
+    CHANGE_GROUP_IMG = enum.auto()
+    FINISH_GROUP_CALL = enum.auto()
 
-print(os.getcwd())
 
-with open(READ_PATH) as f:
-    lines = f.readlines()
+def parse(filename):
+    """
+    ラインの会話データをパースしてdf形式で返還する。
+    :param filename: <str> conversation_filesの中に入っている会話履歴のファイル名
+    :return: <df>
+    """
 
-    new_lines = []
-    date = 0
+    read_path = 'conversation_files/' + filename
+    with open(read_path) as f:
+        lines = f.read().splitlines()
+        df = pd.DataFrame(columns=['year', 'month', 'day', 'date', 'time', 'user', 'action', 'contents'])
+        for i, line in enumerate(tqdm(lines, desc="　　パース中")):
+            if i == 0:
+                title = line
+                continue
 
-    for i, line in enumerate(lines):
+            if i <= 2:
+                continue
 
-        # LINEの会話履歴の最初の３行は無効
-        if i <= 2:
-            continue
+            # 日付から始まる場合
+            if m := re.match(r'(\d{4})/(\d{1,2})/(\d{1,2})\((.)\)', line):
+                year, month, day, date = m.groups()
 
-        new_line = []
+            # 時刻から始まる場合
+            elif re.match(r'[0-9]{2}:[0-9]{2}', line):
+                msg = line.split('\t')
+                time = msg[0]
+                if msg[1] == 'メッセージの送信を取り消しました':
+                    user = None
+                    action = Action.DEL_MSG_BY_SOMEONE
+                    contents = None
 
-        # 日付から始まる場合
-        if re.match(r"\d{4}/\d{1,2}/\d{1,2}", line):
-            line = re.sub(r'\n', '', line)
-            line = re.sub(r'\([月|火|水|木|金|土|日]\)', '', line)
-            date = line
+                elif m := re.match(r'(.*?)がメッセージの送信を取り消しました', msg[1]):
+                    user = m.group()
+                    action = Action.DEL_MSG_BY_USER
+                    contents = None
 
-        # 時刻から始まる場合
-        elif re.match(r"[0-9]+:[0-9][0-9]", line):
-            line = re.sub('\n', '', line)
+                elif m := re.match(r'(.*?)がグループ名を(.*?)に変更しました。', msg[1]):
+                    user, contents = m.groups()
+                    action = Action.CHANGE_GROUP_NAME
 
-            new_line.append(date)
-            new_line.append(line.split('\t')[0])
-            new_line.append(line.split('\t')[1])
-            new_line.append(line.split('\t')[2])
-            new_lines.append(new_line)
+                elif m := re.match(r'(.*?)がグループのプロフィール画像を変更しました。', msg[1]):
+                    user = m.group()
+                    action = Action.CHANGE_GROUP_IMG
+                    contents = None
 
-        # 空行ではない場合
-        # 前回の発言に\nを噛ませて結合する
-        elif line != '\n':
-            line = re.sub(r'\n', '', line)
-            # print(line)
-            new_lines[len(new_lines) - 1][3] += '\n' + line
+                elif msg[1] == 'グループ通話が終了しました。':
+                    user = None
+                    action = Action.FINISH_GROUP_CALL
+                    contents = None
 
-with open(RIGHT_PATH, 'w', newline="") as f:
-    writer = csv.writer(f)
-    for i in new_lines:
-        print(i)
-        writer.writerow(i)
+                else:
+                    time, user, contents = msg
+                    action = Action.SEND_MESSAGE
+
+                row = pd.Series([year, month, day, date, time, user, action, contents], index=df.columns)
+                df = df.append(row, ignore_index=True)
+
+            # 空行ではない場合コメントの改行を示すので前回の発言に\nを噛ませて結合する
+            elif line != '':
+                contents += '\n' + line
+                df.iloc[-1, 7] = contents
+
+            # 空行は無視する
+
+        return df
