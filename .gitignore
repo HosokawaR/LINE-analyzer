@@ -75,3 +75,7 @@ conversation_files/*
 
 # プライベートな設定
 private_settings.py
+
+# dfをごにょごにょするの実験
+test.ipynb
+.ipynb_checkpoints

@@ -1,4 +1,6 @@
 import enum
+import os
+import pickle
 import re
 
 import pandas as pd
@@ -22,14 +24,16 @@ def parse(filename):
     """
 
     read_path = 'conversation_files/' + filename
+
+    if os.path.exists(read_path + '.pickle'):
+        print("pickleデータを使用")
+        with open(read_path + '.pickle', 'rb') as f:
+            return pickle.load(f)
+
     with open(read_path) as f:
         lines = f.read().splitlines()
         df = pd.DataFrame(columns=['year', 'month', 'day', 'date', 'time', 'user', 'action', 'contents'])
         for i, line in enumerate(tqdm(lines, desc="　　パース中")):
-            if i == 0:
-                title = line
-                continue
-
             if i <= 2:
                 continue
 
@@ -47,7 +51,7 @@ def parse(filename):
                     contents = None
 
                 elif m := re.match(r'(.*?)がメッセージの送信を取り消しました', msg[1]):
-                    user = m.group()
+                    user = m.groups()[0]
                     action = Action.DEL_MSG_BY_USER
                     contents = None
 
@@ -56,7 +60,7 @@ def parse(filename):
                     action = Action.CHANGE_GROUP_NAME
 
                 elif m := re.match(r'(.*?)がグループのプロフィール画像を変更しました。', msg[1]):
-                    user = m.group()
+                    user = m.groups()[0]
                     action = Action.CHANGE_GROUP_IMG
                     contents = None
 
@@ -69,7 +73,7 @@ def parse(filename):
                     time, user, contents = msg
                     action = Action.SEND_MESSAGE
 
-                row = pd.Series([year, month, day, date, time, user, action, contents], index=df.columns)
+                row = pd.Series([int(year), int(month), int(day), date, time, user, action, contents], index=df.columns)
                 df = df.append(row, ignore_index=True)
 
             # 空行ではない場合コメントの改行を示すので前回の発言に\nを噛ませて結合する
@@ -78,5 +82,8 @@ def parse(filename):
                 df.iloc[-1, 7] = contents
 
             # 空行は無視する
+
+        with open(read_path + '.pickle', 'wb') as f:
+            pickle.dump(df, f)
 
         return df
