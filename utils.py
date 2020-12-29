@@ -1,7 +1,7 @@
 import MeCab
 
 # 取り出したい品詞
-select_conditions = ['動詞', '形容詞', '名詞']
+select_conditions = ['名詞']
 
 tagger = MeCab.Tagger('')
 tagger.parse('')

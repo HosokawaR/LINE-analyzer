@@ -5,10 +5,12 @@ import pandas as pd
 import seaborn as sns
 # from decorator import decorator
 from matplotlib.font_manager import FontProperties
-
+from pprint import pprint
+from parse_conversation_history import Action
 from parse_conversation_history import parse
 from private_settings import unique_users
-
+import collections
+from utils import wakati_text
 # 日本語フォント設定
 font_path = "/usr/share/fonts/truetype/migmix/migu-1p-regular.ttf"
 font_prop = FontProperties(fname=font_path)
@@ -44,8 +46,36 @@ def analyze_talk_frequency_by_user_and_month(df):
     plt.show()
 
 
-def analyze_word_count_by_user_and_month(df):
-    pass
+def extraction_message(df):
+    exclusion_words = ['[写真]', '[動画]', '[スタンプ]']
+    df = df.replace({word: '' for word in exclusion_words})
+    return df
+
+
+def analyze_word_count_by_month(df):
+    df = exclusion_mention(df)
+    df = extraction_message(df)
+
+    df2 = df[df['action'] == Action.SEND_MESSAGE]
+
+    for i in range(12):
+        s = df2.query(f'month == {i+1}')['contents']
+        all_text = ' '.join(s.values.tolist())
+        words = wakati_text(all_text)
+        ranking = collections.Counter(words).most_common()[:5]
+        print(f'2020年{i + 1}月 使われた単語ランキング')
+        for i, r in enumerate(ranking):
+            print(f'{i + 1}位…「{r[0]}」 {r[1]}回')
+
+        print()
+
+    s = df2['contents']
+    all_text = ' '.join(s.values.tolist())
+    words = wakati_text(all_text)
+    ranking = collections.Counter(words).most_common()[:]
+    print(f'2020年 使われた単語ランキング')
+    for i, r in enumerate(ranking):
+        print(f'{i + 1}位…「{r[0]}」 {r[1]}回')
 
 
 def show_users(df):
@@ -61,10 +91,17 @@ def make_users_unique(df):
     return df
 
 
+def exclusion_mention(df):
+    for users_names in unique_users.values():
+        for names in users_names:
+            df = df.replace({f'@{name}': '' for name in names})
+    return df
+
+
 def main():
     df = parse('mierda_by_chikayama')
 
-    mode = 3
+    mode = 4
     if mode == 1:
         show_users(df)
     else:
@@ -74,6 +111,8 @@ def main():
             analyze_talk_frequency_by_user_and_time(df)
         if mode == 3:
             analyze_talk_frequency_by_user_and_month(df)
+        if mode == 4:
+            analyze_word_count_by_month(df)
 
 
 if __name__ == '__main__':
