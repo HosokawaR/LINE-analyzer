@@ -1,0 +1,10 @@
+Action
+enum34
+matplotlib
+numpy 
+pandas
+parse
+pandas
+seaborn
+tqdm
+ez_setup

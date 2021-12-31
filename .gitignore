@@ -79,3 +79,5 @@ private_settings.py
 # dfをごにょごにょするの実験
 test.ipynb
 .ipynb_checkpoints
+
+venv

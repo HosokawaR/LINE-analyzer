@@ -1,4 +1,4 @@
-import enum
+import enum34 as enum
 import os
 import pickle
 import re
