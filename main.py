@@ -11,6 +11,9 @@ from parse_conversation_history import parse
 from private_settings import unique_users
 import collections
 from utils import wakati_text
+
+from word_cloud import word_cloud
+
 # 日本語フォント設定
 font_path = "/usr/share/fonts/truetype/migmix/migu-1p-regular.ttf"
 font_prop = FontProperties(fname=font_path)
@@ -98,10 +101,19 @@ def exclusion_mention(df):
     return df
 
 
+def get_word_cloud(df):
+    df = exclusion_mention(df)
+    df = extraction_message(df)
+    df2 = df[df['action'] == Action.SEND_MESSAGE]
+    s = df2['contents']
+    all_text = ' '.join(s.values.tolist())
+    word_cloud(all_text)
+
+
 def main():
     df = parse('mierda_by_chikayama')
 
-    mode = 4
+    mode = 5
     if mode == 1:
         show_users(df)
     else:
@@ -113,15 +125,10 @@ def main():
             analyze_talk_frequency_by_user_and_month(df)
         if mode == 4:
             analyze_word_count_by_month(df)
+        if mode == 5:
+            get_word_cloud(df)
 
 
 if __name__ == '__main__':
     main()
 
-## おもしろそうな相関
-# 発言数の推移
-# 最頻単語
-# 今年の漢字
-# メンション
-# 発言文字数
-# 語彙力が少ない人（語数 / 全体）
