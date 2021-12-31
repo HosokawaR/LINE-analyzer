@@ -111,7 +111,7 @@ def get_word_cloud(df):
 
 
 def main():
-    df = parse('mierda_by_chikayama')
+    df = parse('chatfile')
 
     mode = 5
     if mode == 1:
